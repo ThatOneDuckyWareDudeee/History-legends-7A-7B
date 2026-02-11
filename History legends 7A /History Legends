@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>History Heroes: The Revolution</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --neon-blue: #00f3ff;
+            --neon-pink: #ff00ff;
+            --neon-green: #39ff14;
+            --neon-yellow: #fff200;
+            --gold: #ffd700;
+        }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { margin: 0; overflow: hidden; background-color: #050510; touch-action: none; font-family: 'Segoe UI', sans-serif; color: white; }
+        #gameCanvas { display: block; background: #050510; width: 100vw; height: 100vh; }
+        
+        .ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 10; }
+        .ui-element { pointer-events: auto; }
+        .hidden { display: none !important; }
+        
+        .neon-text-blue { text-shadow: 0 0 10px var(--neon-blue), 0 0 20px var(--neon-blue); }
+        .gold-text { color: var(--gold); text-shadow: 0 0 10px var(--gold), 0 0 30px #ffaa00; font-weight: 900; }
+        
+        .question-box {
+            background: rgba(10, 11, 30, 0.9);
+            border: 2px solid var(--neon-blue);
+            border-radius: 12px;
+            padding: 12px 20px;
+            width: 90%;
+            max-width: 650px;
+            text-align: center;
+            box-shadow: 0 0 20px rgba(0, 243, 255, 0.3);
+            backdrop-filter: blur(8px);
+        }
+
+        .btn {
+            border: none;
+            border-radius: 8px;
+            color: white;
+            padding: 12px 24px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .btn-neon-blue { background: transparent; border: 2px solid var(--neon-blue); color: var(--neon-blue); }
+        .btn-neon-blue:hover { background: var(--neon-blue); color: black; box-shadow: 0 0 20px var(--neon-blue); }
+        .btn-neon-red { background: transparent; border: 2px solid #ff4d4d; color: #ff4d4d; }
+        .btn-neon-green { background: transparent; border: 2px solid var(--neon-green); color: var(--neon-green); }
+        .btn-gold { background: var(--gold); border: 2px solid white; color: black; box-shadow: 0 0 25px var(--gold); }
+        
+        .menu-card {
+            background: rgba(20, 20, 40, 0.8);
+            border: 2px solid rgba(255,255,255,0.1);
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        .menu-card:hover { border-color: var(--neon-blue); transform: translateY(-5px); }
+
+        #shop-screen { background: rgba(5, 5, 20, 0.98); }
+        .shop-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem; width: 100%; }
+
+        #gold-burst {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+        }
+        .burst-active { animation: burst-anim 1.5s ease-out forwards; }
+        @keyframes burst-anim {
+            0% { opacity: 0; transform: scale(0.8); }
+            20% { opacity: 1; transform: scale(1); }
+            100% { opacity: 0; transform: scale(1.5); }
+        }
+        .god-ray {
+            position: absolute;
+            width: 200vw;
+            height: 15px;
+            background: linear-gradient(90deg, transparent, white, var(--gold), white, transparent);
+            transform: rotate(var(--r));
+            opacity: 0.6;
+        }
+        
+        /* Custom scrollbar for shop */
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #0a0a20; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: var(--neon-blue); border-radius: 10px; }
+    </style>
+</head>
+<body>
+
+<div id="gold-burst">
+    <div class="god-ray" style="--r:0deg"></div>
+    <div class="god-ray" style="--r:45deg"></div>
+    <div class="god-ray" style="--r:90deg"></div>
+    <div class="god-ray" style="--r:135deg"></div>
+    <div class="text-white text-6xl font-black italic gold-text z-50">LEGENDARY!</div>
+</div>
+
+<div id="ui-container" class="ui-layer">
+    <!-- MAIN MENU -->
+    <div id="main-menu" class="ui-element flex flex-col items-center w-full max-w-4xl p-8">
+        <h1 class="text-5xl md:text-7xl font-black text-white mb-2 neon-text-blue italic text-center uppercase tracking-tighter">HISTORY HEROES</h1>
+        <h2 class="text-lg md:text-xl text-pink-500 mb-6 font-bold uppercase tracking-widest text-center">The Revolution</h2>
+        
+        <div class="mb-8 bg-black bg-opacity-60 px-6 py-2 rounded-full border border-yellow-500 flex items-center gap-3">
+            <i class="fas fa-coins text-yellow-400"></i>
+            <span id="coin-display" class="font-bold text-xl text-white">0</span>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 w-full px-4">
+            <div class="menu-card rounded-2xl p-6 flex flex-col items-center" onclick="window.game.startMiniGame('car')">
+                <i class="fas fa-car-side text-5xl text-cyan-400 mb-4"></i>
+                <h3 class="text-xl font-bold">Car Frenzy</h3>
+                <p class="text-xs text-gray-400 mt-2 text-center">Switch lanes to the right answer</p>
+            </div>
+            
+            <div class="menu-card rounded-2xl p-6 flex flex-col items-center" onclick="window.game.startMiniGame('bullet')">
+                <i class="fas fa-crosshairs text-5xl text-red-500 mb-4"></i>
+                <h3 class="text-xl font-bold">Quick Shot</h3>
+                <p class="text-xs text-gray-400 mt-2 text-center">Shoot the correct floating target</p>
+            </div>
+
+            <div class="menu-card rounded-2xl p-6 flex flex-col items-center" onclick="window.game.startMiniGame('doors')">
+                <i class="fas fa-door-open text-5xl text-pink-500 mb-4"></i>
+                <h3 class="text-xl font-bold">Destiny Doors</h3>
+                <p class="text-xs text-gray-400 mt-2 text-center">Choose the door of truth</p>
+            </div>
+        </div>
+
+        <button class="mt-8 btn btn-neon-blue w-64" onclick="window.game.openShop()">
+            <i class="fas fa-shopping-cart mr-2"></i> COIN SHOP
+        </button>
+
+        <div class="mt-8 text-gray-500 text-[10px] tracking-[0.2em] font-bold uppercase">
+            Game Engine v2.1 • <span class="text-cyan-400">Milad 7A</span>
+        </div>
+    </div>
+
+    <!-- SHOP -->
+    <div id="shop-screen" class="ui-element hidden absolute inset-0 flex flex-col items-center p-4 md:p-8 z-20">
+        <div class="w-full max-w-4xl bg-gray-900 rounded-3xl border-2 border-cyan-500 p-6 md:p-8 flex flex-col h-full overflow-hidden shadow-2xl">
+            <div class="flex justify-between items-center mb-6 shrink-0">
+                <h2 class="text-3xl font-black italic text-white uppercase">THE VAULT</h2>
+                <div class="flex items-center gap-4">
+                    <div class="text-yellow-400 font-bold bg-black px-4 py-1 rounded-full border border-yellow-900">
+                        <i class="fas fa-coins mr-2"></i><span id="shop-coins">0</span>
+                    </div>
+                    <button class="btn btn-neon-red px-4 py-1 text-sm" onclick="window.game.closeShop()">X</button>
+                </div>
+            </div>
+            <div id="shop-items" class="shop-grid overflow-y-auto pr-2 custom-scrollbar"></div>
+        </div>
+    </div>
+
+    <!-- HUD -->
+    <div id="game-hud" class="ui-element hidden w-full h-full pointer-events-none relative">
+        <div class="absolute top-4 left-4 pointer-events-auto">
+            <button class="btn btn-neon-red text-[10px] px-4 py-2" onclick="window.game.backToMenu()">EXIT</button>
+        </div>
+        <div class="absolute top-4 right-4 bg-black bg-opacity-80 border border-yellow-500 text-yellow-400 px-4 py-2 rounded-full font-bold text-sm">
+            <i class="fas fa-coins mr-2"></i><span id="hud-coins" class="text-white">0</span>
+        </div>
+        <div class="absolute top-4 w-full flex justify-center px-4">
+            <div class="question-box" id="question-text-box">
+                <p id="q-text" class="text-sm md:text-lg font-bold text-white"></p>
+            </div>
+        </div>
+        <div id="feedback-overlay" class="absolute inset-0 flex items-center justify-center hidden">
+            <h1 id="feedback-text" class="text-6xl md:text-8xl font-black italic uppercase tracking-tighter"></h1>
+        </div>
+    </div>
+</div>
+
+<canvas id="gameCanvas"></canvas>
+
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    const questions = [
+        { q: "What does word Revolution mean?", a: "Rapid major change/overthrow", w: "Staying the same" },
+        { q: "Who was Adam Smith?", a: "Economist wanting free trade", w: "French General" },
+        { q: "Which ism did Smith found?", a: "Liberalism", w: "Communism" },
+        { q: "When was the French Revolution?", a: "1789-1799", w: "1914-1918" },
+        { q: "Why did French Rev start?", a: "Poverty & unfair taxes", w: "Too much wealth" },
+        { q: "Who was Montesquieu?", a: "Wanted separation of powers", w: "Wanted absolute king" },
+        { q: "What were Estates General?", a: "Assembly of 3 classes", w: "French Army" },
+        { q: "The 3 Estates in 1789?", a: "Clergy, Nobles, Commoners", w: "Army, Navy, Airforce" },
+        { q: "How was National Assembly formed?", a: "3rd Estate broke away", w: "King created it" },
+        { q: "Neighbors' reaction to Rev?", a: "Fear and War", w: "Joy and Gifts" },
+        { q: "Reign of Terror?", a: "Mass executions (Guillotine)", w: "Peaceful voting" },
+        { q: "Conscription consequences?", a: "Large army formed", w: "No one fought" },
+        { q: "How did Napoleon take power?", a: "Coup d'etat", w: "Election" },
+        { q: "French Rev Slogans?", a: "Liberty, Equality, Fraternity", w: "Money, Power, Fame" },
+        { q: "French Rev Consequences?", a: "End of absolute monarchy", w: "Nothing changed" },
+        { q: "Who was Edmund Burke?", a: "Conservative, slow change", w: "Radical revolutionary" },
+        { q: "Ism Burke founded?", a: "Conservatism", w: "Liberalism" },
+        { q: "Where did Ind. Rev begin?", a: "Great Britain", w: "Sweden" },
+        { q: "What was Spinning Jenny?", a: "Spins many threads", w: "Steam Train" },
+        { q: "Why Steam Engine amazing?", a: "Reliable factory power", w: "Made coffee" },
+        { q: "Ind. Rev societal change?", a: "Farm to Factory/City", w: "City to Farm" },
+        { q: "Enclosures impact?", a: "Farmers moved to cities", w: "Farmers got rich" },
+        { q: "Worker life in cities?", a: "Dangerous, low pay", w: "Safe, high pay" },
+        { q: "Who was Karl Marx?", a: "Wanted classless society", w: "Factory owner" },
+        { q: "Ism Marx founded?", a: "Communism", w: "Capitalism" },
+        { q: "Ind. Cities in England?", a: "Manchester, Birmingham", w: "Paris, Lyon" },
+        { q: "Transport changes?", a: "Steam trains & ships", w: "Cars & planes" },
+        { q: "Ind. Rev in Sweden?", a: "Sold iron & timber", w: "Sold gold & spices" }
+    ];
+
+    const shopItems = [
+        { id: 'neon_blue', name: 'Cyan Streak', price: 0, color: '#00f3ff', type: 'color' },
+        { id: 'neon_pink', name: 'Pink Glow', price: 150, color: '#ff00ff', type: 'color' },
+        { id: 'neon_green', name: 'Acid Green', price: 300, color: '#39ff14', type: 'color' },
+        { id: 'neon_gold', name: 'Golden Era', price: 1000, color: '#ffd700', type: 'color' },
+        { id: 'car_sports', name: 'Vortex Coupe', price: 0, color: '#00f3ff', type: 'car' },
+        { id: 'car_heavy', name: 'Imperial Tank', price: 2000, color: '#ff8800', type: 'car' },
+        { id: 'car_future', name: 'Nova Hover', price: 5000, color: '#ffffff', type: 'car' },
+        { id: 'harr_handshake', name: 'The Golden Handshake', price: 10000, color: '#ffd700', type: 'special' }
+    ];
+
+    let lastTime = 0;
+    function resize() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
+        if (!text) return;
+        const words = text.split(' ');
+        let line = '';
+        let currentY = y;
+        for (let n = 0; n < words.length; n++) {
+            let testLine = line + words[n] + ' ';
+            let metrics = ctx.measureText(testLine);
+            if (metrics.width > maxWidth && n > 0) {
+                ctx.fillText(line, x, currentY);
+                line = words[n] + ' ';
+                currentY += lineHeight;
+            } else { line = testLine; }
+        }
+        ctx.fillText(line, x, currentY);
+    }
+
+    class CarFrenzy {
+        constructor() {
+            this.lane = 0; this.progress = 0; this.baseSpeed = 450; 
+            this.speed = this.baseSpeed;
+            this.options = { 0: '', 1: '' };
+            this.correctLane = 0; this.paused = false;
+            this.setupLevel();
+            
+            this.handleInput = (e) => {
+                if (this.paused || (e.target && e.target.closest('button'))) return;
+                this.lane = this.lane === 0 ? 1 : 0;
+            };
+            window.addEventListener('mousedown', this.handleInput);
+            window.addEventListener('touchstart', this.handleInput);
+        }
+        setupLevel() {
+            const q = questions[Math.floor(Math.random() * questions.length)];
+            this.correctLane = Math.random() > 0.5 ? 1 : 0;
+            this.options[this.correctLane] = q.a;
+            this.options[1 - this.correctLane] = q.w;
+            document.getElementById('q-text').innerText = q.q;
+            this.progress = 0; this.paused = false;
+            // Progressive difficulty based on current session performance (simulated via coins)
+            this.speed = this.baseSpeed + Math.min(600, (window.game.coins * 0.5));
+        }
+        update(dt) {
+            if (this.paused) return;
+            this.progress += this.speed * dt;
+            if (this.progress > canvas.height - 100) {
+                this.paused = true;
+                if (this.lane === this.correctLane) {
+                    window.game.addCoins(15);
+                    window.game.showFeedback("PERFECT!", "#39ff14");
+                } else {
+                    window.game.showFeedback("CRASHED!", "#ff00ff");
+                }
+                setTimeout(() => this.setupLevel(), 1000);
+            }
+        }
+        draw() {
+            const CX = canvas.width / 2, roadW = Math.min(600, canvas.width * 0.95), laneW = roadW / 2;
+            ctx.fillStyle = '#0a0a1a'; ctx.fillRect(CX - roadW/2, 0, roadW, canvas.height);
+            ctx.strokeStyle = '#1a2a4a'; ctx.lineWidth = 4;
+            ctx.strokeRect(CX - roadW/2, 0, roadW, canvas.height);
+            ctx.beginPath(); ctx.setLineDash([20, 20]); ctx.moveTo(CX, 0); ctx.lineTo(CX, canvas.height); ctx.stroke(); ctx.setLineDash([]);
+
+            ctx.textAlign = 'center'; ctx.font = 'bold 18px sans-serif';
+            for(let i=0; i<2; i++) {
+                ctx.fillStyle = this.lane === i ? window.game.activeColor : 'rgba(255,255,255,0.4)';
+                wrapText(ctx, this.options[i], CX - roadW/4 + (i * laneW), 180, laneW - 40, 22);
+            }
+
+            ctx.strokeStyle = '#ff00ff'; ctx.lineWidth = 10;
+            ctx.beginPath(); ctx.moveTo(CX - roadW/2, canvas.height - 100); ctx.lineTo(CX + roadW/2, canvas.height - 100); ctx.stroke();
+            this.drawCar(CX - roadW/4 + (this.lane * laneW), this.progress);
+        }
+        drawCar(x, y) {
+            ctx.save();
+            ctx.shadowBlur = 20; ctx.shadowColor = window.game.activeColor;
+            ctx.fillStyle = window.game.activeColor;
+            if(window.game.activeCar === 'car_heavy') ctx.fillRect(x - 25, y - 40, 50, 80);
+            else if(window.game.activeCar === 'car_future') {
+                ctx.beginPath(); ctx.moveTo(x, y - 45); ctx.lineTo(x + 25, y + 35); ctx.lineTo(x - 25, y + 35); ctx.closePath(); ctx.fill();
+            } else {
+                ctx.beginPath(); ctx.roundRect(x - 20, y - 40, 40, 80, 8); ctx.fill();
+            }
+            ctx.restore();
+        }
+        cleanup() {
+            window.removeEventListener('mousedown', this.handleInput);
+            window.removeEventListener('touchstart', this.handleInput);
+        }
+    }
+
+    class BulletGame {
+        constructor() {
+            this.targets = []; this.setupLevel();
+            this.handleInput = (e) => {
+                if (e.target && e.target.closest('button')) return;
+                const rect = canvas.getBoundingClientRect();
+                const mx = (e.clientX || (e.touches && e.touches[0].clientX)) - rect.left;
+                const my = (e.clientY || (e.touches && e.touches[0].clientY)) - rect.top;
+                
+                this.targets.forEach((t) => {
+                    if (Math.hypot(mx - t.x, my - t.y) < t.r + 20) {
+                        if (t.isCorrect) {
+                            window.game.addCoins(20);
+                            window.game.showFeedback("HEADSHOT!", "#39ff14");
+                            setTimeout(() => this.setupLevel(), 800);
+                        } else {
+                            window.game.showFeedback("MISS!", "#ff00ff");
+                        }
+                    }
+                });
+            };
+            window.addEventListener('mousedown', this.handleInput);
+            window.addEventListener('touchstart', this.handleInput);
+        }
+        setupLevel() {
+            const q = questions[Math.floor(Math.random() * questions.length)];
+            document.getElementById('q-text').innerText = q.q;
+            const isCorrectLeft = Math.random() > 0.5;
+            this.targets = [
+                { x: canvas.width * 0.25, y: canvas.height * 0.6, r: 60, text: isCorrectLeft ? q.a : q.w, isCorrect: isCorrectLeft, phase: 0 },
+                { x: canvas.width * 0.75, y: canvas.height * 0.6, r: 60, text: !isCorrectLeft ? q.a : q.w, isCorrect: !isCorrectLeft, phase: Math.PI }
+            ];
+        }
+        update(dt) {
+            const speedMult = 1 + Math.min(2, (window.game.coins * 0.005));
+            this.targets.forEach(t => {
+                t.phase += dt * 3 * speedMult;
+                t.y = (canvas.height * 0.6) + Math.sin(t.phase) * 40;
+            });
+        }
+        draw() {
+            this.targets.forEach(t => {
+                ctx.save();
+                ctx.shadowBlur = 20; ctx.shadowColor = window.game.activeColor;
+                ctx.strokeStyle = window.game.activeColor; ctx.lineWidth = 5;
+                ctx.beginPath(); ctx.arc(t.x, t.y, t.r, 0, Math.PI * 2); ctx.stroke();
+                ctx.restore();
+                ctx.fillStyle = 'white'; ctx.textAlign = 'center'; ctx.font = 'bold 15px sans-serif';
+                wrapText(ctx, t.text, t.x, t.y + t.r + 40, 150, 20);
+                ctx.strokeStyle = 'white'; ctx.lineWidth = 1;
+                ctx.beginPath(); ctx.moveTo(t.x-20, t.y); ctx.lineTo(t.x+20, t.y); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(t.x, t.y-20); ctx.lineTo(t.x, t.y+20); ctx.stroke();
+            });
+        }
+        cleanup() {
+            window.removeEventListener('mousedown', this.handleInput);
+            window.removeEventListener('touchstart', this.handleInput);
+        }
+    }
+
+    class DestinyDoors {
+        constructor() {
+            this.doors = []; this.correctIndex = 0; this.setupLevel();
+            this.handleInput = (e) => {
+                if (e.target && e.target.closest('button')) return;
+                const rect = canvas.getBoundingClientRect();
+                const mx = (e.clientX || (e.touches && e.touches[0].clientX)) - rect.left;
+                const my = (e.clientY || (e.touches && e.touches[0].clientY)) - rect.top;
+                this.doors.forEach((d, idx) => {
+                    if (mx > d.x && mx < d.x + d.w && my > d.y && my < d.y + d.h) {
+                        if (idx === this.correctIndex) {
+                            window.game.addCoins(30);
+                            window.game.showFeedback("ASCENDED!", "#39ff14");
+                        } else {
+                            window.game.showFeedback("TRAPPED!", "#ff4d4d");
+                        }
+                        setTimeout(() => this.setupLevel(), 1000);
+                    }
+                });
+            };
+            window.addEventListener('mousedown', this.handleInput);
+            window.addEventListener('touchstart', this.handleInput);
+        }
+        setupLevel() {
+            const q = questions[Math.floor(Math.random() * questions.length)];
+            document.getElementById('q-text').innerText = q.q;
+            this.correctIndex = Math.floor(Math.random() * 3);
+            const doorW = Math.min(180, canvas.width/4), doorH = 260;
+            const totalW = (doorW * 3) + 60;
+            const startX = (canvas.width - totalW) / 2;
+            this.doors = [];
+            for(let i=0; i<3; i++) {
+                let txt = "";
+                if(i === this.correctIndex) {
+                    txt = q.a;
+                } else {
+                    let randQ;
+                    do { randQ = questions[Math.floor(Math.random() * questions.length)]; } while (randQ === q);
+                    txt = randQ.w;
+                }
+                this.doors.push({ x: startX + i * (doorW + 30), y: canvas.height/2 - 50, w: doorW, h: doorH, text: txt });
+            }
+        }
+        update() {}
+        draw() {
+            this.doors.forEach((d) => {
+                ctx.save();
+                ctx.shadowBlur = 15; ctx.shadowColor = window.game.activeColor;
+                ctx.strokeStyle = window.game.activeColor; ctx.lineWidth = 4;
+                ctx.strokeRect(d.x, d.y, d.w, d.h);
+                ctx.restore();
+                ctx.fillStyle = 'white'; ctx.textAlign = 'center'; ctx.font = 'bold 14px sans-serif';
+                wrapText(ctx, d.text, d.x + d.w/2, d.y + d.h/2, d.w - 20, 18);
+            });
+        }
+        cleanup() {
+            window.removeEventListener('mousedown', this.handleInput);
+            window.removeEventListener('touchstart', this.handleInput);
+        }
+    }
+
+    window.game = {
+        activeMode: null, coins: 0, inventory: ['neon_blue', 'car_sports'], 
+        activeColor: '#00f3ff', activeCar: 'car_sports',
+        
+        startMiniGame: (type) => {
+            document.getElementById('main-menu').classList.add('hidden');
+            document.getElementById('game-hud').classList.remove('hidden');
+            if (type === 'car') window.game.activeMode = new CarFrenzy();
+            else if (type === 'bullet') window.game.activeMode = new BulletGame();
+            else if (type === 'doors') window.game.activeMode = new DestinyDoors();
+            updateUI();
+        },
+        backToMenu: () => {
+            if (window.game.activeMode) window.game.activeMode.cleanup();
+            window.game.activeMode = null;
+            document.getElementById('main-menu').classList.remove('hidden');
+            document.getElementById('game-hud').classList.add('hidden');
+            updateUI();
+        },
+        addCoins: (n) => { 
+            window.game.coins += n; 
+            updateUI(); 
+        },
+        showFeedback: (text, color) => {
+            const el = document.getElementById('feedback-overlay');
+            const txt = document.getElementById('feedback-text');
+            txt.innerText = text; txt.style.color = color;
+            txt.style.textShadow = `0 0 30px ${color}`;
+            el.classList.remove('hidden');
+            setTimeout(() => el.classList.add('hidden'), 900);
+        },
+        openShop: () => {
+            const container = document.getElementById('shop-items');
+            container.innerHTML = '';
+            shopItems.forEach(item => {
+                const isOwned = window.game.inventory.includes(item.id);
+                let isActive = false;
+                if (item.type === 'color') isActive = (window.game.activeColor.toLowerCase() === item.color.toLowerCase());
+                else if (item.type === 'car') isActive = (window.game.activeCar === item.id);
+                else if (item.type === 'special') isActive = isOwned;
+
+                const card = document.createElement('div');
+                card.className = `p-4 bg-gray-800 rounded-xl flex flex-col gap-3 border-2 ${isActive ? 'border-cyan-400 shadow-lg' : 'border-transparent'}`;
+                card.innerHTML = `
+                    <div class="flex justify-between items-center">
+                        <span class="font-bold text-sm" style="color:${item.color}">${item.name}</span>
+                        <span class="text-xs text-yellow-400"><i class="fas fa-coins mr-1"></i>${item.price}</span>
+                    </div>
+                    <button class="btn ${isActive ? 'btn-neon-blue' : (isOwned ? 'btn-neon-blue' : 'btn-neon-green')} py-2 text-xs" 
+                        onclick="window.game.buy('${item.id}', ${item.price}, '${item.color}', '${item.type}')">
+                        ${isActive ? 'ACTIVE' : (isOwned ? 'EQUIP' : 'BUY')}
+                    </button>`;
+                container.appendChild(card);
+            });
+            document.getElementById('shop-screen').classList.remove('hidden');
+            document.getElementById('shop-coins').innerText = window.game.coins;
+        },
+        closeShop: () => document.getElementById('shop-screen').classList.add('hidden'),
+        buy: (id, price, color, type) => {
+            if (window.game.inventory.includes(id)) {
+                if (type === 'color') window.game.activeColor = color;
+                if (type === 'car') window.game.activeCar = id;
+            } else if (window.game.coins >= price) {
+                window.game.coins -= price;
+                window.game.inventory.push(id);
+                if (type === 'color') window.game.activeColor = color;
+                if (type === 'car') window.game.activeCar = id;
+                if (id === 'harr_handshake') {
+                    document.getElementById('gold-burst').classList.add('burst-active');
+                    setTimeout(() => document.getElementById('gold-burst').classList.remove('burst-active'), 2000);
+                }
+            }
+            updateUI();
+            window.game.openShop();
+        }
+    };
+
+    function updateUI() {
+        document.getElementById('coin-display').innerText = window.game.coins;
+        document.getElementById('hud-coins').innerText = window.game.coins;
+        document.getElementById('shop-coins').innerText = window.game.coins;
+    }
+
+    function loop(now) {
+        const dt = (now - lastTime) / 1000;
+        lastTime = now;
+        ctx.fillStyle = '#050510'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+        if (window.game.activeMode) {
+            window.game.activeMode.update(Math.min(dt, 0.1));
+            window.game.activeMode.draw();
+        }
+        requestAnimationFrame(loop);
+    }
+    requestAnimationFrame((t) => { lastTime = t; loop(t); });
+</script>
+</body>
+</html>
